@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"postsApp/service"
 
+	"../errors"
+
 	"./entity"
 	"./service"
 )
@@ -13,12 +15,17 @@ var (
 	postService service.PostService = service.NewPostService()
 )
 
-func getPosts(response http.ResponseWriter, request *http.Request) {
+type postController interface {
+	GetPosts(response http.ResponseWriter, request *http.Request)
+	AddPost(response http.ResponseWriter, request *http.Request)
+}
+
+func GetPosts(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 	posts, err := postService.FindAll()
 	if err != nil {
 		response.WriteHeader(http.StatusInternalServerError)
-		response.Write([]byte(`{"error" : "Error getting the posts"}`))
+		json.NewEncoder(response).Encode(errors.ServiceError{Message: "Error getting the posts"})
 	}
 
 	response.WriteHeader(http.StatusOK)
@@ -31,23 +38,28 @@ func getPosts(response http.ResponseWriter, request *http.Request) {
 	//response.Write(result)
 }
 
-func addPost(response http.ResponseWriter, request *http.Request) {
+func AddPost(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 	var post entity.Post
 	err := json.NewDecoder(request.Body).Decode(&post)
 	if err != nil {
 		response.WriteHeader(http.StatusInternalServerError)
-		response.Write([]byte(`{"error" : "Error marshaling data"}`))
+		json.NewEncoder(response).Encode(errors.ServiceError{Message: "Error unmarshaling data"})
 		return
 	}
-	err := postService.Validate(&post)
-	if err != nil {
+	err1 := postService.Validate(&post)
+	if err1 != nil {
 		response.WriteHeader(http.StatusInternalServerError)
-		response.Write([]byte(`{"error" : "Error marshaling data"}`))
+		json.NewEncoder(response).Encode(errors.ServiceError{Message: err1.Error()})
 		return
 	}
 
-	postService.Create(&post)
+	result, err2 := postService.Create(&post)
+	if err2 != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(response).Encode(errors.ServiceError{Message: "Error saving the post"})
+		return
+	}
 	response.WriteHeader(http.StatusOK)
-	json.NewEncoder(response).Encode(post)
+	json.NewEncoder(response).Encode(result)
 }
