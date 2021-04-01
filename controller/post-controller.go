@@ -1,21 +1,21 @@
-package main
+package controller
 
 import (
 	"encoding/json"
-	"math/rand"
 	"net/http"
+	"postsApp/service"
 
 	"./entity"
-	"./repository"
+	"./service"
 )
 
 var (
-	repo repository.PostRepository = repository.NewPostRepository()
+	postService service.PostService = service.NewPostService()
 )
 
 func getPosts(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
-	posts, err := repo.FindAll()
+	posts, err := postService.FindAll()
 	if err != nil {
 		response.WriteHeader(http.StatusInternalServerError)
 		response.Write([]byte(`{"error" : "Error getting the posts"}`))
@@ -38,10 +38,16 @@ func addPost(response http.ResponseWriter, request *http.Request) {
 	if err != nil {
 		response.WriteHeader(http.StatusInternalServerError)
 		response.Write([]byte(`{"error" : "Error marshaling data"}`))
+		return
 	}
-	post.ID = rand.Int63()
-	//posts = append(posts, post)
-	repo.Save(&post)
+	err := postService.Validate(&post)
+	if err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		response.Write([]byte(`{"error" : "Error marshaling data"}`))
+		return
+	}
+
+	postService.Create(&post)
 	response.WriteHeader(http.StatusOK)
 	json.NewEncoder(response).Encode(post)
 }
