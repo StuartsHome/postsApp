@@ -11,8 +11,10 @@ import (
 	"./service"
 )
 
+type controller struct{}
+
 var (
-	postService service.PostService = service.NewPostService()
+	postService service.PostService
 )
 
 type postController interface {
@@ -20,7 +22,12 @@ type postController interface {
 	AddPost(response http.ResponseWriter, request *http.Request)
 }
 
-func GetPosts(response http.ResponseWriter, request *http.Request) {
+func NewPostController(service service.PostService) postController {
+	postService = service
+	return &controller{}
+}
+
+func (*controller) GetPosts(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 	posts, err := postService.FindAll()
 	if err != nil {
@@ -38,7 +45,7 @@ func GetPosts(response http.ResponseWriter, request *http.Request) {
 	//response.Write(result)
 }
 
-func AddPost(response http.ResponseWriter, request *http.Request) {
+func (*controller) AddPost(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 	var post entity.Post
 	err := json.NewDecoder(request.Body).Decode(&post)

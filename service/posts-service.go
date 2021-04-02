@@ -21,7 +21,8 @@ var (
 	repo repository.PostRepository = repository.NewFirestoreRepository()
 )
 
-func NewPostService() PostService {
+func NewPostService(repo repository.NewFirestoreRepository) PostService {
+	repo = repo
 	return &service{}
 }
 
